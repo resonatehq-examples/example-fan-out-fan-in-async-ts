@@ -23,8 +23,9 @@ import {
 //
 // IMPORTANT: the async engine defaults to Never retry (no automatic retry on
 // failure). Opt in per step with ctx.options({ retryPolicy: new Exponential() }).
-// This is the opposite of the generator engine's ctx.beginRun which retries
-// with Exponential by default.
+// Contrast with the generator engine: ctx.beginRun() with a regular async
+// function defaults to Exponential retry; with a generator function it defaults
+// to Never. The async engine always starts at Never — opt in per step.
 //
 // Total wall time ≈ max(channel latencies), not the sum.
 // If a channel retries, the others are already checkpointed — they don't re-run.
@@ -39,7 +40,7 @@ export interface NotificationSummary {
 export async function notifyAll(
   ctx: Context,
   event: OrderEvent,
-  simulateCrash: boolean,
+  failOnce: boolean,
 ): Promise<NotificationSummary> {
   const start = Date.now();
 
@@ -49,12 +50,12 @@ export async function notifyAll(
   const smsP   = ctx.run(sendSms, event);
   const slackP = ctx.run(sendSlack, event);
 
-  // Push: in crash mode, opt into Exponential retry to recover from the
+  // Push: in retry mode, opt into Exponential retry to recover from the
   // transient error. Without ctx.options({ retryPolicy }), the default
   // Never policy would propagate the push failure to Promise.all immediately.
-  const pushP = simulateCrash
-    ? ctx.run(sendPush, event, simulateCrash, ctx.options({ retryPolicy: new Exponential() }))
-    : ctx.run(sendPush, event, simulateCrash);
+  const pushP = failOnce
+    ? ctx.run(sendPush, event, failOnce, ctx.options({ retryPolicy: new Exponential() }))
+    : ctx.run(sendPush, event, failOnce);
 
   // Fan-in: native Promise.all — waits for all four DurablePromises to settle.
   // Resonate checkpoints each result independently. On recovery, only the

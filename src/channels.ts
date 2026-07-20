@@ -26,7 +26,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Track push notification attempts (crash demo only)
+// Track push notification attempts (retry demo only)
 const pushAttempts = new Map<string, number>();
 
 // ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ export async function sendSlack(
 export async function sendPush(
   _ctx: Context,
   event: OrderEvent,
-  simulateCrash: boolean,
+  failOnce: boolean,
 ): Promise<ChannelResult> {
   const start = Date.now();
   const attempt = (pushAttempts.get(event.orderId) ?? 0) + 1;
@@ -84,7 +84,7 @@ export async function sendPush(
   );
   await sleep(120);
 
-  if (simulateCrash && attempt === 1) {
+  if (failOnce && attempt === 1) {
     // Simulates a transient push-service outage.
     // ctx.options({ retryPolicy: new Exponential() }) in the caller retries this.
     throw new Error("Push service temporarily unavailable");

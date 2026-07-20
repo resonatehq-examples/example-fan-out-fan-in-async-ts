@@ -6,7 +6,7 @@ import type { OrderEvent } from "./channels.js";
 // Resonate setup — async engine
 //
 // RESONATE_URL overrides the default embedded (local-store) mode.
-// Use `RESONATE_URL=http://localhost:8001 bun start` to connect to a server.
+// Use `RESONATE_URL=http://localhost:8073 bun start` to connect to a server.
 // ---------------------------------------------------------------------------
 
 const url = process.env.RESONATE_URL;
@@ -17,7 +17,7 @@ resonate.register("notifyAll", notifyAll);
 // Demo runner
 // ---------------------------------------------------------------------------
 
-const simulateCrash = process.argv.includes("--crash");
+const failOnce = process.argv.includes("--fail-once");
 
 const event: OrderEvent = {
   orderId: `ord_${Date.now()}`,
@@ -28,7 +28,7 @@ const event: OrderEvent = {
 
 console.log("=== Fan-Out / Fan-In (Async Engine) ===");
 console.log(
-  simulateCrash
+  failOnce
     ? "Mode: RETRY DEMO  (push fails on attempt 1 → retries with Exponential)"
     : "Mode: HAPPY PATH  (4 channels, Promise.all fan-in)",
 );
@@ -36,13 +36,13 @@ console.log(`\nOrder ${event.orderId} confirmed — notifying ${event.userId}...
 
 const wallStart = Date.now();
 
-const handle = await resonate.run(
+const handle = await resonate.run<NotificationSummary>(
   `notify/${event.orderId}`,
   "notifyAll",
   event,
-  simulateCrash,
+  failOnce,
 );
-const result: NotificationSummary = await handle.result();
+const result = await handle.result();
 const wallMs = Date.now() - wallStart;
 
 console.log("\n=== Result ===");
@@ -53,14 +53,14 @@ for (const r of result.results) {
   console.log(`  ${r.channel.padEnd(6)} ${r.durationMs}ms  ${r.messageId}`);
 }
 
-if (!simulateCrash) {
+if (!failOnce) {
   const sequential = result.results.reduce((s, r) => s + r.durationMs, 0);
   console.log(`\nFan-out time:   ${wallMs}ms`);
   console.log(`Sequential est: ${sequential}ms`);
   console.log(`Speedup:        ${(sequential / wallMs).toFixed(1)}x`);
 }
 
-if (simulateCrash) {
+if (failOnce) {
   console.log(
     "\nNote: push failed on attempt 1 and was retried via ctx.options({ retryPolicy: new Exponential() }).",
     "\nEmail, SMS, and Slack completed before the retry — they were NOT re-sent.",
@@ -69,4 +69,4 @@ if (simulateCrash) {
   );
 }
 
-resonate.stop();
+await resonate.stop();

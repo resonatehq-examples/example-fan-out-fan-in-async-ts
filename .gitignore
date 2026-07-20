@@ -1,4 +1,7 @@
 node_modules/
-bun.lock
+.env
+.env.local
+.DS_Store
+package-lock.json
 *.js.map
 dist/
