@@ -1,0 +1,18 @@
+{
+  "name": "example-fan-out-fan-in-async-ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "start:crash": "bun run src/index.ts --crash"
+  },
+  "dependencies": {
+    "@resonatehq/sdk": "^0.11.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
